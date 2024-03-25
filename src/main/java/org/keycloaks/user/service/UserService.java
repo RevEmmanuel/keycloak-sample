@@ -18,4 +18,6 @@ public interface UserService {
     UserDto updateCurrentUserDetails(UpdateUserRequestDto requestDto);
 
     TokenResponseDto signUp(SignUpRequest requestDto);
+
+    void deleteUser(String userId);
 }

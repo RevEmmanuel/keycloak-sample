@@ -63,7 +63,8 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto updateCurrentUserDetails(UpdateUserRequestDto requestDto) {
         User user = this.getCurrentUser();
-        user.setName(requestDto.getName());
+        user.setFirstName(requestDto.getFirstName());
+        user.setLastName(requestDto.getLastName());
         user.setPhoneNumber(requestDto.getPhoneNumber());
 
         keycloakService.updateUser(user);
@@ -79,7 +80,8 @@ public class UserServiceImpl implements UserService {
         userRepository.save(User.builder()
                 .email(userRepresentation.getEmail())
                 .id(userRepresentation.getId())
-                .name(userRepresentation.getFirstName() + " " + userRepresentation.getLastName())
+                .firstName(userRepresentation.getFirstName())
+                .lastName(userRepresentation.getLastName())
                 .build());
 
         AccessTokenResponse accessTokenResponse = keycloakService.login(LoginRequestDto.builder()
@@ -91,5 +93,11 @@ public class UserServiceImpl implements UserService {
                 .auth(accessTokenResponse.getToken())
                 .refresh(accessTokenResponse.getRefreshToken())
                 .build();
+    }
+
+    @Override
+    public void deleteUser(String userId) {
+        keycloakService.deleteUser(userId);
+        userRepository.deleteById(userId);
     }
 }

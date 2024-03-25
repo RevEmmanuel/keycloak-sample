@@ -22,7 +22,6 @@ public class GeneralConfig {
                 .setFieldMatchingEnabled(true)
                 .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE)
                 .setMatchingStrategy(MatchingStrategies.STANDARD);
-
         return mapper;
     }
 
