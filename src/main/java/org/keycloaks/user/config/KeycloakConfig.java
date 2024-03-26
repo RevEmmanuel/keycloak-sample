@@ -18,13 +18,16 @@ public class KeycloakConfig {
 
     @Bean
     public Keycloak keycloak() {
+
         return KeycloakBuilder.builder()
                 .grantType(OAuth2Constants.PASSWORD)
-                .realm(keycloakConfigProperties.getMasterRealm())
-                .clientId(keycloakConfigProperties.getMasterClientId())
+                .realm("master")
+                .clientId("oksy")
+                .clientSecret("JxGzfOJT135EjSeD9arxcc3VX73MSj6v")
                 .username(keycloakConfigProperties.getUsername())
                 .password(keycloakConfigProperties.getPassword())
-                .serverUrl(keycloakConfigProperties.getServerUrl())
+                .serverUrl("http://localhost:8080")
                 .build();
+
     }
 }

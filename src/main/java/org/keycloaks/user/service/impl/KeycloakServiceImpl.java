@@ -4,7 +4,6 @@ import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.*;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.AccessTokenResponse;
@@ -92,14 +91,6 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void assignRole(String keycloakId, String role) {
-        UserResource userResource = this.getUser(keycloakId);
-        RoleRepresentation roleRepresentation = this.getRole(role);
-
-        userResource.roles().realmLevel().add(List.of(roleRepresentation));
-    }
-
-    @Override
     public void createPassword(String keycloakId, String password) {
         UserResource userResource = this.getUser(keycloakId);
         UserRepresentation userRepresentation = userResource.toRepresentation();
@@ -128,19 +119,11 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     @Override
     public AccessTokenResponse login(LoginRequestDto loginRequestDto) {
-        try {
-            Keycloak keycloak = KeycloakBuilder.builder()
-                    .realm(KEYCLOAK_REALM)
-                    .serverUrl(KEYCLOAK_SERVER_URL)
-                    .username(loginRequestDto.getEmail())
-                    .password(loginRequestDto.getPassword())
-                    .clientId(KEYCLOAK_CLIENT_ID)
-                    .build();
 
+        try {
             TokenManager tokenManager = keycloak.tokenManager();
             return tokenManager.getAccessToken();
         } catch (Exception e) {
-            // invalid login details
             throw new RuntimeException();
         }
     }
@@ -174,7 +157,7 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void addRoleToRealm(String roleName, String description) {
+    public String addRoleToRealm(String roleName, String description) {
         RolesResource rolesResource = keycloak.realm(KEYCLOAK_REALM).roles();
         List<RoleRepresentation> existingRoles = rolesResource.list();
 
@@ -184,7 +167,9 @@ public class KeycloakServiceImpl implements KeycloakService {
             roleRepresentation.setDescription(description);
 
             rolesResource.create(roleRepresentation);
+            return roleName;
         }
+        throw new RuntimeException("Role name exists already");
     }
 
 
@@ -200,7 +185,6 @@ public class KeycloakServiceImpl implements KeycloakService {
                 log.info("Keycloak client already exists: {}", clientName);
             }
         } catch (Exception ignored) {
-
         }
     }
 
@@ -226,11 +210,16 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     @Override
     public Response createGroup(String groupName) {
+        String roleName = groupName + "_Membership_Role";
+        String description = String.format("Default Role for members of %s group", groupName);
         try {
             GroupRepresentation groupRepresentation = new GroupRepresentation();
             groupRepresentation.setName(groupName);
-            groupRepresentation.setRealmRoles(Collections.singletonList("default-role")); // Assign a default role if needed
-            return keycloak.realm(KEYCLOAK_REALM).groups().add(groupRepresentation);
+            String createdRoleName = addRoleToRealm(roleName, description);
+            groupRepresentation.setRealmRoles(Collections.singletonList(createdRoleName)); // Assign a default role if needed
+            Response response = keycloak.realm(KEYCLOAK_REALM).groups().add(groupRepresentation);
+            assignRoleToGroup(groupName, roleName);
+            return response;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create group", e);
         }
@@ -290,6 +279,17 @@ public class KeycloakServiceImpl implements KeycloakService {
         }
 
         return clientRoles;
+    }
+
+    @Override
+    public void addRoleToUser(String userId, String roleName) {
+        try {
+            RoleRepresentation roleRepresentation = getRoleByName(roleName);
+            keycloak.realm(KEYCLOAK_REALM).users().get(userId)
+                    .roles().realmLevel().add(Collections.singletonList(roleRepresentation));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add role to user", e);
+        }
     }
 
 

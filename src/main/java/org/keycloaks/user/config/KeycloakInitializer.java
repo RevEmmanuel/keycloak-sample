@@ -39,4 +39,5 @@ public class KeycloakInitializer {
             keycloak.realms().create(realmRepresentationToImport);
         }
     }
+
 }

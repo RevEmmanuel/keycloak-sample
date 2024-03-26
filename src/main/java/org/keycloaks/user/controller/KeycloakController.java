@@ -65,7 +65,18 @@ public class KeycloakController {
     }
 
 
-    @PostMapping("/assign/{groupName}")
+    @PostMapping("/assign-role-to-user")
+    public ResponseEntity<?> assignRoleToUser(@RequestParam String userId, @RequestParam String roleName) {
+        try {
+            keycloakService.addRoleToUser(userId, roleName);
+            return ResponseEntity.ok("Role assigned successfully to user: " + roleName);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to assign role to user");
+        }
+    }
+
+
+    @PostMapping("/assign-role-to-group/{groupName}")
     public ResponseEntity<String> assignRoleToGroup(@PathVariable String groupName, @RequestParam String roleName) {
         try {
             keycloakService.assignRoleToGroup(groupName, roleName);

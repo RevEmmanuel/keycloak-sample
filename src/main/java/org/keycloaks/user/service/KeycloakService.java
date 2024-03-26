@@ -24,7 +24,7 @@ public interface KeycloakService {
 
     RoleRepresentation getRole(String roleName);
 
-    void addRoleToRealm(String roleName, String description);
+    String addRoleToRealm(String roleName, String description);
 
     void updateUser(User user);
 
@@ -36,9 +36,9 @@ public interface KeycloakService {
 
     List<RoleRepresentation> getAllRoles();
 
-    void assignRoleToGroup(String groupName, String roleName);
+    void addRoleToUser(String userId, String roleName);
 
-    void assignRole(String keycloakId, String role);
+    void assignRoleToGroup(String groupName, String roleName);
 
     void createPassword(String keycloakId, String password);
 
