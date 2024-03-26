@@ -84,6 +84,7 @@ public class UserServiceImpl implements UserService {
                 .lastName(userRepresentation.getLastName())
                 .build());
 
+
         AccessTokenResponse accessTokenResponse = keycloakService.login(LoginRequestDto.builder()
                 .email(userRepresentation.getEmail())
                 .password(requestDto.getPassword())
