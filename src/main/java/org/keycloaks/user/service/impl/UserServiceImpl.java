@@ -63,6 +63,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto updateCurrentUserDetails(UpdateUserRequestDto requestDto) {
         User user = this.getCurrentUser();
+        if (user == null) {
+            throw new RuntimeException("Current user not found");
+        }
+
         user.setFirstName(requestDto.getFirstName());
         user.setLastName(requestDto.getLastName());
         user.setPhoneNumber(requestDto.getPhoneNumber());
@@ -83,7 +87,6 @@ public class UserServiceImpl implements UserService {
                 .firstName(userRepresentation.getFirstName())
                 .lastName(userRepresentation.getLastName())
                 .build());
-
 
         AccessTokenResponse accessTokenResponse = keycloakService.login(LoginRequestDto.builder()
                 .email(userRepresentation.getEmail())

@@ -22,6 +22,8 @@ public interface KeycloakService {
 
     UserResource getUser(String keycloakId);
 
+    String getUserIdByEmail(String email);
+
     RoleRepresentation getRole(String roleName);
 
     String addRoleToRealm(String roleName, String description);
@@ -38,7 +40,13 @@ public interface KeycloakService {
 
     void addRoleToUser(String userId, String roleName);
 
+    void addUserToGroup(String userId, String groupName);
+
     void assignRoleToGroup(String groupName, String roleName);
+
+    List<GroupRepresentation> getAllGroups();
+
+    UserRepresentation getUserDetails(String userId);
 
     void createPassword(String keycloakId, String password);
 

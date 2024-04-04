@@ -1,7 +1,9 @@
 package org.keycloaks.user.controller;
 
 import jakarta.ws.rs.core.Response;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.service.KeycloakService;
 import org.springframework.http.HttpStatus;
@@ -75,6 +77,16 @@ public class KeycloakController {
         }
     }
 
+    @PostMapping("/{userId}/assign-user-to-groups/{groupName}")
+    public ResponseEntity<String> addUserToGroup(@PathVariable String userId, @PathVariable String groupName) {
+        try {
+            keycloakService.addUserToGroup(userId, groupName);
+            return ResponseEntity.ok("User successfully added to group: " + groupName);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add user to group");
+        }
+    }
+
 
     @PostMapping("/assign-role-to-group/{groupName}")
     public ResponseEntity<String> assignRoleToGroup(@PathVariable String groupName, @RequestParam String roleName) {
@@ -84,5 +96,23 @@ public class KeycloakController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to assign role to group: " + groupName);
         }
+    }
+
+    @GetMapping("/allGroups")
+    public ResponseEntity<List<GroupRepresentation>> getAllGroups() {
+        try {
+            List<GroupRepresentation> allGroups = keycloakService.getAllGroups();
+            return ResponseEntity.ok(allGroups);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of());
+        }
+    }
+
+
+    @GetMapping("/user-details/{userId}")
+    public ResponseEntity<UserRepresentation> getUserDetails(@PathVariable String userId) {
+        UserRepresentation userDetails = keycloakService.getUserDetails(userId);
+        return ResponseEntity.ok(userDetails);
     }
 }
