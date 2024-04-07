@@ -23,4 +23,6 @@ public class KeycloakConfigProperties {
 
     private String password;
 
+    private String clientSecret;
+
 }

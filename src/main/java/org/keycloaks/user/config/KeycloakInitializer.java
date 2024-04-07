@@ -24,12 +24,20 @@ public class KeycloakInitializer {
 
     @PostConstruct
     public void init() throws IOException {
+
+        log.info(String.valueOf(keycloak.realms().findAll().stream()
+                .noneMatch(realm -> realm.getRealm().equals(keycloakConfigProperties.getRealm()))));
+
         if (keycloak.realms().findAll().stream()
                 .noneMatch(realm -> realm.getRealm().equals(keycloakConfigProperties.getRealm()))) {
+
             Resource resource = new ClassPathResource(INIT_KEYCLOAK_PATH);
+
             RealmRepresentation realmRepresentationToImport = objectMapper.readValue(resource.getInputStream(),
                     RealmRepresentation.class);
+
             keycloak.realms().create(realmRepresentationToImport);
         }
     }
+
 }

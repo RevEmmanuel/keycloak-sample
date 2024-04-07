@@ -4,17 +4,17 @@ import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.admin.client.resource.UserResource;
+import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.*;
-import org.keycloaks.user.data.dtos.requests.CreateUserRepresentationRequestDto;
+import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.KeycloakTokenResponse;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
-import org.keycloaks.user.data.enums.ExampleRoles;
 import org.keycloaks.user.data.models.User;
 import org.keycloaks.user.service.KeycloakService;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +22,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import java.util.Arrays;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -34,13 +36,13 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     private final WebClient.Builder webClient;
 
-    @Value("${centric.keycloak.realm}")
+    @Value("${example.keycloak.realm}")
     private String KEYCLOAK_REALM;
 
-    @Value("${centric.keycloak.server-url}")
+    @Value("${example.keycloak.server-url}")
     private String KEYCLOAK_SERVER_URL;
 
-    @Value("${centric.keycloak.master-client-id}")
+    @Value("${example.keycloak.master-client-id}")
     private String KEYCLOAK_CLIENT_ID;
 
     @Override
@@ -64,13 +66,11 @@ public class KeycloakServiceImpl implements KeycloakService {
             Response response = keycloak.realm(KEYCLOAK_REALM).users().create(userRepresentation);
 
             if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
-                // user already exists
                 throw new RuntimeException();
             }
-
             return keycloak.realm(KEYCLOAK_REALM).users().search(userRequestDto.getEmail()).get(0);
+
         } catch (Exception e) {
-            // user already exists??
             throw new RuntimeException();
         }
     }
@@ -80,8 +80,22 @@ public class KeycloakServiceImpl implements KeycloakService {
         try {
             return keycloak.realm(KEYCLOAK_REALM).users().get(keycloakId);
         } catch (Exception e) {
-            // user not found
             throw new RuntimeException();
+        }
+    }
+
+    @Override
+    public String getUserIdByEmail(String email) {
+        try {
+            UsersResource usersResource = keycloak.realm(KEYCLOAK_REALM).users();
+            List<UserRepresentation> users = usersResource.search(email);
+            if (users != null && !users.isEmpty()) {
+                return users.get(0).getId();
+            } else {
+                throw new RuntimeException("User with email " + email + " not found in Keycloak");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get user ID from Keycloak", e);
         }
     }
 
@@ -90,17 +104,8 @@ public class KeycloakServiceImpl implements KeycloakService {
         try {
             return keycloak.realm(KEYCLOAK_REALM).roles().get(roleName).toRepresentation();
         } catch (Exception e) {
-            // cannot find role?
             throw new RuntimeException();
         }
-    }
-
-    @Override
-    public void assignRole(String keycloakId, String role) {
-        UserResource userResource = this.getUser(keycloakId);
-        RoleRepresentation roleRepresentation = this.getRole(role);
-
-        userResource.roles().realmLevel().add(List.of(roleRepresentation));
     }
 
     @Override
@@ -124,26 +129,19 @@ public class KeycloakServiceImpl implements KeycloakService {
         UserResource userResource = this.getUser(user.getId());
         UserRepresentation userRepresentation = userResource.toRepresentation();
 
-        userRepresentation.setFirstName(user.getName());
+        userRepresentation.setFirstName(user.getFirstName());
+        userRepresentation.setLastName(user.getLastName());
         userRepresentation.setEmail(user.getEmail());
         userResource.update(userRepresentation);
     }
 
     @Override
     public AccessTokenResponse login(LoginRequestDto loginRequestDto) {
-        try {
-            Keycloak keycloak = KeycloakBuilder.builder()
-                    .realm(KEYCLOAK_REALM)
-                    .serverUrl(KEYCLOAK_SERVER_URL)
-                    .username(loginRequestDto.getEmail())
-                    .password(loginRequestDto.getPassword())
-                    .clientId(KEYCLOAK_CLIENT_ID)
-                    .build();
 
+        try {
             TokenManager tokenManager = keycloak.tokenManager();
             return tokenManager.getAccessToken();
         } catch (Exception e) {
-            // invalid login details
             throw new RuntimeException();
         }
     }
@@ -177,26 +175,21 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void addRolesToRealm() {
+    public String addRoleToRealm(String roleName, String description) {
         RolesResource rolesResource = keycloak.realm(KEYCLOAK_REALM).roles();
         List<RoleRepresentation> existingRoles = rolesResource.list();
-        List<String> allRoles = Arrays.stream(ExampleRoles.values()).map(Enum::name).toList();
-        List<String> roles = allRoles.stream()
-                .filter(role -> !existingRoles
-                        .stream()
-                        .map(RoleRepresentation::getName)
-                        .toList()
-                        .contains(role))
-                .toList();
 
-        if (!roles.isEmpty()) {
-            for (String role : roles) {
-                RoleRepresentation roleRepresentation = new RoleRepresentation();
-                roleRepresentation.setName(role);
-                rolesResource.create(roleRepresentation);
-            }
+        if (existingRoles.stream().noneMatch(role -> role.getName().equals(roleName))) {
+            RoleRepresentation roleRepresentation = new RoleRepresentation();
+            roleRepresentation.setName(roleName);
+            roleRepresentation.setDescription(description);
+
+            rolesResource.create(roleRepresentation);
+            return roleName;
         }
+        throw new RuntimeException("Role name exists already");
     }
+
 
     @Override
     public void createClient(String clientName) {
@@ -210,7 +203,6 @@ public class KeycloakServiceImpl implements KeycloakService {
                 log.info("Keycloak client already exists: {}", clientName);
             }
         } catch (Exception ignored) {
-
         }
     }
 
@@ -222,5 +214,216 @@ public class KeycloakServiceImpl implements KeycloakService {
 
             keycloak.realms().create(realmRepresentation);
         }
+    }
+
+    @Override
+    public void deleteUser(String keycloakId) {
+        try {
+            UserResource userResource = getUser(keycloakId);
+            userResource.remove();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete user from Keycloak", e);
+        }
+    }
+
+    @Override
+    public Response createGroup(String groupName) {
+        String roleName = groupName + "_Membership_Role";
+        String description = String.format("Default Role for members of %s group", groupName);
+        try {
+            GroupRepresentation groupRepresentation = new GroupRepresentation();
+            groupRepresentation.setName(groupName);
+            String createdRoleName = addRoleToRealm(roleName, description);
+            groupRepresentation.setRealmRoles(Collections.singletonList(createdRoleName)); // Assign a default role if needed
+            Response response = keycloak.realm(KEYCLOAK_REALM).groups().add(groupRepresentation);
+            assignRoleToGroup(groupName, roleName);
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create group", e);
+        }
+    }
+
+    public Response addSubgroup(CreateSubGroupRequest request) {
+        try {
+            GroupRepresentation parentGroup = getGroupByName(request.getParentGroupName());
+            GroupRepresentation subGroup = new GroupRepresentation();
+            subGroup.setName(request.getChildGroupName());
+            return keycloak.realm(KEYCLOAK_REALM).groups().group(parentGroup.getId()).subGroup(subGroup);
+        } catch (Exception e) {
+
+            throw new RuntimeException("Failed to create subgroup", e);
+        }
+    }
+
+    private GroupRepresentation getGroupByName(String groupName) {
+        try {
+            List<GroupRepresentation> groups = keycloak.realm(KEYCLOAK_REALM).groups().groups();
+            for (GroupRepresentation group : groups) {
+                if (group.getName().equals(groupName)) {
+                    return group;
+                }
+            }
+            throw new RuntimeException("Group not found: " + groupName);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch group", e);
+        }
+    }
+
+    @Override
+    public List<RoleRepresentation> getAllRoles() {
+
+        RealmResource realmResource = keycloak.realm(KEYCLOAK_REALM);
+        RolesResource realmRolesResource = realmResource.roles();
+        List<RoleRepresentation> realmRoles = realmRolesResource.list();
+        List<RoleRepresentation> allRoles = new ArrayList<>(realmRoles);
+
+        List<RoleRepresentation> clientRoles = getAllClientRoles(realmResource);
+        allRoles.addAll(clientRoles);
+
+        return allRoles;
+    }
+
+    private List<RoleRepresentation> getAllClientRoles(RealmResource realmResource) {
+        List<RoleRepresentation> clientRoles = new ArrayList<>();
+        List<ClientRepresentation> clients = realmResource.clients().findAll();
+
+        for (ClientRepresentation client : clients) {
+            String clientId = client.getId();
+            RolesResource clientRolesResource = realmResource.clients().get(clientId).roles();
+
+            List<RoleRepresentation> roles = clientRolesResource.list();
+            clientRoles.addAll(roles);
+        }
+
+        return clientRoles;
+    }
+
+    @Override
+    public void addRoleToUser(String userId, String roleName) {
+        try {
+            RoleRepresentation roleRepresentation = getRoleByName(roleName);
+            keycloak.realm(KEYCLOAK_REALM).users().get(userId)
+                    .roles().realmLevel().add(Collections.singletonList(roleRepresentation));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add role to user", e);
+        }
+    }
+
+    @Override
+    public void addUserToGroup(String userId, String groupName) {
+
+        try {
+            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
+            if (userResource == null) {
+                throw new RuntimeException("User not found: " + userId);
+            }
+
+            GroupRepresentation group = findGroupByName(groupName);
+            if (group == null) {
+                throw new RuntimeException("Group not found: " + groupName);
+            }
+
+            keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add user to group", e);
+        }
+    }
+
+    private GroupRepresentation findGroupByName(String groupName) {
+        try {
+            List<GroupRepresentation> allGroups = getAllGroups();
+            for (GroupRepresentation group : allGroups) {
+                if (group.getName().equals(groupName)) {
+                    return group;
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch group", e);
+        }
+    }
+
+
+    @Override
+    public void assignRoleToGroup(String groupName, String roleName) {
+        try {
+            GroupRepresentation groupRepresentation = findGroupByName(groupName);
+            RoleRepresentation roleRepresentation = getRoleByName(roleName);
+
+            assignRoleToGroup(groupRepresentation, roleRepresentation);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to assign role to group", e);
+        }
+    }
+
+    private void assignRoleToGroup(GroupRepresentation groupRepresentation, RoleRepresentation roleRepresentation) {
+        try {
+            keycloak.realm(KEYCLOAK_REALM).groups().group(groupRepresentation.getId()).roles().realmLevel().add(Collections.singletonList(roleRepresentation));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to assign role to group", e);
+        }
+    }
+
+    private RoleRepresentation getRoleByName(String roleName) {
+        try {
+            List<RoleRepresentation> roles = getAllRoles();
+            for (RoleRepresentation role : roles) {
+                if (role.getName().equals(roleName)) {
+                    return role;
+                }
+            }
+            throw new RuntimeException("Role not found: " + roleName);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get role by name", e);
+        }
+    }
+
+    @Override
+    public List<GroupRepresentation> getAllGroups() {
+        try {
+            RealmResource realmResource = keycloak.realm(KEYCLOAK_REALM);
+            List<GroupRepresentation> allGroups = realmResource.groups().groups();
+
+            List<GroupRepresentation> allGroupsIncludingSubgroups = new ArrayList<>(allGroups);
+            for (GroupRepresentation group : allGroups) {
+                fetchSubgroups(realmResource, group, allGroupsIncludingSubgroups);
+            }
+
+            return allGroupsIncludingSubgroups;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch groups", e);
+        }
+    }
+
+    private void fetchSubgroups(RealmResource realmResource, GroupRepresentation group, List<GroupRepresentation> allGroupsIncludingSubgroups) {
+        try {
+            List<GroupRepresentation> subgroups = realmResource.groups().group(group.getId()).getSubGroups(0, allGroupsIncludingSubgroups.size(), true);
+
+            allGroupsIncludingSubgroups.addAll(subgroups);
+            for (GroupRepresentation subgroup : subgroups) {
+                fetchSubgroups(realmResource, subgroup, allGroupsIncludingSubgroups);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch subgroups for group: " + group.getId(), e);
+        }
+    }
+
+
+    @Override
+    public UserRepresentation getUserDetails(String userId) {
+        try {
+            RealmResource realmResource = keycloak.realm(KEYCLOAK_REALM);
+            UsersResource usersResource = realmResource.users();
+
+            return usersResource.get(userId).toRepresentation();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get user details", e);
+        }
+    }
+
+
+    @Override
+    public GroupRepresentation getGroup(String groupId) {
+        return null;
     }
 }

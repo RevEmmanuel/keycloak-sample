@@ -34,16 +34,23 @@ public class UserController {
         return ResponseEntity.ok(userService.login(requestDto));
     }
 
-    @GetMapping
+    @GetMapping("/details")
     @Operation(summary = "Get current user details")
     public ResponseEntity<UserDto> getCurrentUser() {
         return ResponseEntity.ok(userService.getCurrentUserDetails());
     }
 
-    @PutMapping
+    @PutMapping("/update")
     @Operation(summary = "Update current user details")
     public ResponseEntity<UserDto> updateCurrentUser(@RequestBody @Valid UpdateUserRequestDto requestDto) {
         return ResponseEntity.ok(userService.updateCurrentUserDetails(requestDto));
+    }
+
+    @DeleteMapping("/delete/{userId}")
+    @Operation(summary = "Delete user by ID")
+    public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
+        userService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
 }
