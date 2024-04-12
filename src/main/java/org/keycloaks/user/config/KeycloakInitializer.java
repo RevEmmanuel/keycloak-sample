@@ -24,10 +24,6 @@ public class KeycloakInitializer {
 
     @PostConstruct
     public void init() throws IOException {
-
-        log.info(String.valueOf(keycloak.realms().findAll().stream()
-                .noneMatch(realm -> realm.getRealm().equals(keycloakConfigProperties.getRealm()))));
-
         if (keycloak.realms().findAll().stream()
                 .noneMatch(realm -> realm.getRealm().equals(keycloakConfigProperties.getRealm()))) {
 

@@ -38,3 +38,7 @@ build/
 .DS_Store
 
 /src/main/resources/application-local.properties
+
+.idea/dataSources.xml
+.idea/material_theme_project_new.xml
+.idea/misc.xml
