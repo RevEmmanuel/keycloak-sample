@@ -32,7 +32,7 @@ public interface KeycloakService {
 
     void deleteUser(String keycloakId);
 
-    Response createGroup(String groupName);
+    GroupRepresentation createGroup(String groupName);
 
     Response addSubgroup(CreateSubGroupRequest request);
 
@@ -60,4 +60,6 @@ public interface KeycloakService {
     void createRealm();
 
     GroupRepresentation getGroup(String groupId);
+
+    void createRole(String s);
 }
