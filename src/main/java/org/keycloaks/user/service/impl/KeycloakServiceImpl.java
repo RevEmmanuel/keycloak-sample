@@ -169,7 +169,6 @@ public class KeycloakServiceImpl implements KeycloakService {
 
             return accessTokenResponse;
         } catch (Exception e) {
-            // not sure
             throw new RuntimeException();
         }
     }
@@ -312,6 +311,53 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public void addUserToGroup(String userId, String groupName) {
 
+//        try {
+//            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
+//            if (userResource == null) {
+//                throw new RuntimeException("User not found: " + userId);
+//            }
+//
+//            GroupRepresentation group = findGroupByName(groupName);
+//            if (group == null) {
+//                throw new RuntimeException("Group not found: " + groupName);
+//            }
+//
+//            keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("Failed to add user to group", e);
+//        }
+
+//        try {
+//            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
+//            if (userResource == null) {
+//                throw new RuntimeException("User not found: " + userId);
+//            }
+//
+//            GroupRepresentation group = findGroupByName(groupName);
+//            if (group == null) {
+//                throw new RuntimeException("Group not found: " + groupName);
+//            }
+//
+//            keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
+//
+//
+//            if (group.getParentId() != null) {
+//                GroupRepresentation parentGroup = keycloak.realm(KEYCLOAK_REALM).groups().group(group.getParentId()).toRepresentation();
+//                log.info("Id__********** " + parentGroup.getId());
+//                List<String> parentRoles = parentGroup.getRealmRoles();
+//                if (parentRoles != null) {
+//                    for (String role : parentRoles) {
+//                        keycloak.realm(KEYCLOAK_REALM).users().get(userId).roles().realmLevel().remove(Collections.singletonList(getRoleByName(role)));
+//
+//                        log.info("Role__ ********** " + role);
+////                        log.info("User_Role__ ********** " + keycloak.realm(KEYCLOAK_REALM).users().get(userId).roles().realmLevel().remove(););
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            throw new RuntimeException("Failed to add user to group", e);
+//        }
+
         try {
             UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
             if (userResource == null) {
@@ -324,10 +370,22 @@ public class KeycloakServiceImpl implements KeycloakService {
             }
 
             keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
+            if (group.getParentId() != null) {
+                GroupRepresentation parentGroup = keycloak.realm(KEYCLOAK_REALM).groups().group(group.getParentId()).toRepresentation();
+
+                List<String> parentRoles = parentGroup.getRealmRoles();
+                if (parentRoles != null) {
+                    for (String role : parentRoles) {
+                        keycloak.realm(KEYCLOAK_REALM).users().get(userId).roles().realmLevel().remove(Collections.singletonList(getRoleByName(role)));
+                    }
+                }
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to add user to group", e);
         }
     }
+
+
 
     private GroupRepresentation findGroupByName(String groupName) {
         try {
@@ -419,6 +477,22 @@ public class KeycloakServiceImpl implements KeycloakService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to get user details", e);
         }
+    }
+
+    @Override
+    public void removeRoleFromUser(String userId, String roleName) {
+        try {
+            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
+            if (userResource == null) {
+                throw new RuntimeException("User not found: " + userId);
+            }
+
+            RoleRepresentation roleRepresentation = getRoleByName(roleName);
+            userResource.roles().realmLevel().remove(Collections.singletonList(roleRepresentation));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to remove role from user", e);
+        }
+
     }
 
 

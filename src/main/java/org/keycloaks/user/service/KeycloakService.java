@@ -48,6 +48,8 @@ public interface KeycloakService {
 
     UserRepresentation getUserDetails(String userId);
 
+    void removeRoleFromUser(String userId, String roleName);
+
     void createPassword(String keycloakId, String password);
 
     AccessTokenResponse refreshToken(String refreshToken);

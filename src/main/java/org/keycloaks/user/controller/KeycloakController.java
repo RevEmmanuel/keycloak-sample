@@ -115,4 +115,15 @@ public class KeycloakController {
         UserRepresentation userDetails = keycloakService.getUserDetails(userId);
         return ResponseEntity.ok(userDetails);
     }
+
+
+    @DeleteMapping("/remove-role-from-users/{userId}/roles/{roleName}")
+    public ResponseEntity<String> removeRoleFromUser(@PathVariable String userId, @PathVariable String roleName) {
+        try {
+            keycloakService.removeRoleFromUser(userId, roleName);
+            return ResponseEntity.ok("Role removed successfully from user.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to remove role from user: " + e.getMessage());
+        }
+    }
 }
