@@ -35,12 +35,12 @@ public class KeycloakController {
     }
 
     @PostMapping("/groups")
-    public ResponseEntity<Object> createGroup(@RequestParam String groupName) {
-        Response response = keycloakService.createGroup(groupName);
-        if (response.getStatusInfo().equals(Response.Status.CREATED)) {
+    public ResponseEntity<String> createGroup(@RequestParam String groupName) {
+        try {
+            keycloakService.createGroup(groupName);
             return ResponseEntity.status(HttpStatus.CREATED).body("Group created successfully");
-        } else {
-            return ResponseEntity.status(response.getStatus()).body("Failed to create group");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create group");
         }
     }
 

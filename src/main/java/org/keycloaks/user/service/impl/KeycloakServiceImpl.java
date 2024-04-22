@@ -1,9 +1,13 @@
 package org.keycloaks.user.service.impl;
 
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.admin.client.resource.UserResource;
@@ -11,12 +15,15 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.*;
+import org.keycloaks.exceptions.KeycloakSampleException;
+import org.keycloaks.user.config.KeycloakConfigProperties;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.KeycloakTokenResponse;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
 import org.keycloaks.user.data.models.User;
 import org.keycloaks.user.service.KeycloakService;
+import org.keycloaks.utils.ProjectUtilities;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -36,13 +43,18 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     private final WebClient.Builder webClient;
 
-    @Value("${example.keycloak.realm}")
+    private final KeycloakConfigProperties keycloakConfigProperties;
+
+    @Value("${KEYCLOAK_REALM}")
     private String KEYCLOAK_REALM;
 
-    @Value("${example.keycloak.server-url}")
+    @Value("${KEYCLOAK_SERVER_URL}")
     private String KEYCLOAK_SERVER_URL;
 
-    @Value("${example.keycloak.master-client-id}")
+    @Value("${KEYCLOAK_CLIENT_SECRET}")
+    private String KEYCLOAK_CLIENT_SECRET;
+
+    @Value("${CLIENT_ID}")
     private String KEYCLOAK_CLIENT_ID;
 
     @Override
@@ -137,13 +149,32 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     @Override
     public AccessTokenResponse login(LoginRequestDto loginRequestDto) {
-
         try {
-            TokenManager tokenManager = keycloak.tokenManager();
+            Keycloak cloak = KeycloakBuilder.builder()
+                    .grantType(OAuth2Constants.PASSWORD)
+                    .realm(KEYCLOAK_REALM)
+                    .clientId(KEYCLOAK_CLIENT_ID)
+                    .clientSecret(KEYCLOAK_CLIENT_SECRET)
+                    .username(loginRequestDto.getEmail())
+                    .password(loginRequestDto.getPassword())
+                    .serverUrl(KEYCLOAK_SERVER_URL)
+                    .build();
+            TokenManager tokenManager = cloak.tokenManager();
             return tokenManager.getAccessToken();
         } catch (Exception e) {
+            log.info(e.getMessage());
             throw new RuntimeException();
         }
+    }
+
+    public static RealmRepresentation getRealm(Keycloak keycloak, String realmName, String username, String password) throws KeycloakSampleException, NotFoundException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(username)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        return keycloak.realm(realmName).toRepresentation();
     }
 
     @Override
@@ -203,6 +234,7 @@ public class KeycloakServiceImpl implements KeycloakService {
                 log.info("Keycloak client already exists: {}", clientName);
             }
         } catch (Exception ignored) {
+            ignored.printStackTrace();
         }
     }
 
@@ -227,7 +259,7 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public Response createGroup(String groupName) {
+    public GroupRepresentation createGroup(String groupName) {
         String roleName = groupName + "_Membership_Role";
         String description = String.format("Default Role for members of %s group", groupName);
         try {
@@ -236,8 +268,11 @@ public class KeycloakServiceImpl implements KeycloakService {
             String createdRoleName = addRoleToRealm(roleName, description);
             groupRepresentation.setRealmRoles(Collections.singletonList(createdRoleName)); // Assign a default role if needed
             Response response = keycloak.realm(KEYCLOAK_REALM).groups().add(groupRepresentation);
+            if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
+                throw new RuntimeException();
+            }
             assignRoleToGroup(groupName, roleName);
-            return response;
+            return getGroupByName(groupName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create group", e);
         }
@@ -425,5 +460,10 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public GroupRepresentation getGroup(String groupId) {
         return null;
+    }
+
+    @Override
+    public void createRole(String s) {
+
     }
 }
