@@ -8,10 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.admin.client.resource.RealmResource;
-import org.keycloak.admin.client.resource.RolesResource;
-import org.keycloak.admin.client.resource.UserResource;
-import org.keycloak.admin.client.resource.UsersResource;
+import org.keycloak.admin.client.resource.*;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.*;
@@ -23,7 +20,7 @@ import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
 import org.keycloaks.user.data.models.User;
 import org.keycloaks.user.service.KeycloakService;
-import org.keycloaks.utils.ProjectUtilities;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -57,35 +54,93 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Value("${CLIENT_ID}")
     private String KEYCLOAK_CLIENT_ID;
 
+    private final ModelMapper modelMapper;
+
+    String karraboBackofficeRealm = "KarraboBackofficeRealm";
+
     @Override
     public UserRepresentation createUser(SignUpRequest userRequestDto) {
+
         UserRepresentation userRepresentation = new UserRepresentation();
         userRepresentation.setEmail(userRequestDto.getEmail());
         userRepresentation.setUsername(userRequestDto.getEmail());
-        userRepresentation.setEnabled(Boolean.TRUE);
-        userRepresentation.setEmailVerified(Boolean.TRUE);
+        userRepresentation.setEnabled(true);
+        userRepresentation.setEmailVerified(true);
         userRepresentation.setFirstName(userRequestDto.getFirstName());
         userRepresentation.setLastName(userRequestDto.getLastName());
 
         CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
         credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
         credentialRepresentation.setValue(userRequestDto.getPassword());
-        credentialRepresentation.setTemporary(Boolean.FALSE);
+        credentialRepresentation.setTemporary(false);
 
         userRepresentation.setCredentials(List.of(credentialRepresentation));
 
         try {
-            Response response = keycloak.realm(KEYCLOAK_REALM).users().create(userRepresentation);
+            Response response = keycloak.realm(karraboBackofficeRealm).users().create(userRepresentation);
 
             if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
-                throw new RuntimeException();
+                throw new RuntimeException("User with the same email or username already exists.");
             }
-            return keycloak.realm(KEYCLOAK_REALM).users().search(userRequestDto.getEmail()).get(0);
+
+            List<UserRepresentation> foundUsers = keycloak.realm(karraboBackofficeRealm).users().search(userRequestDto.getEmail());
+            if (foundUsers.isEmpty()) {
+                throw new RuntimeException("User creation failed.");
+            }
+            return foundUsers.get(1);
 
         } catch (Exception e) {
-            throw new RuntimeException();
+            throw new RuntimeException("An error occurred while creating the user.", e);
+        }
+
+
+
+    }
+
+    @Override
+    public void addUserToRealm(String realmName, SignUpRequest userRequestDto) {
+
+        if (!doesRealmExist(realmName)) {
+            throw new IllegalArgumentException("Realm '" + realmName + "' does not exist.");
+        }
+
+        try {
+            RealmResource realmResource = keycloak.realm(realmName);
+            UsersResource usersResource = realmResource.users();
+
+            List<UserRepresentation> existingUsers = usersResource.search(userRequestDto.getEmail());
+            if (!existingUsers.isEmpty()) {
+                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
+            }
+
+            UserRepresentation Representation = new UserRepresentation();
+            Representation.setEmail(userRequestDto.getEmail());
+            Representation.setUsername(userRequestDto.getEmail());
+            Representation.setEnabled(true);
+            Representation.setEmailVerified(true);
+            Representation.setFirstName(userRequestDto.getFirstName());
+            Representation.setLastName(userRequestDto.getLastName());
+
+
+
+            CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+            credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+            credentialRepresentation.setValue(userRequestDto.getPassword());
+            credentialRepresentation.setTemporary(false);
+
+            Representation.setCredentials(List.of(credentialRepresentation));
+
+            Response response = usersResource.create(Representation);
+
+            if (response.getStatus() == Response.Status.CONFLICT.getStatusCode()) {
+                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating user in realm '" + realmName + "'", e);
         }
     }
+
 
     @Override
     public UserResource getUser(String keycloakId) {
@@ -238,14 +293,30 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void createRealm() {
-        if (keycloak.realms().findAll().stream().noneMatch(realm -> realm.getRealm().equals(KEYCLOAK_REALM))) {
+    public void createRealm(String realmName) throws KeycloakSampleException {
+        if (realmName == null || realmName.trim().isEmpty()) {
+            throw new KeycloakSampleException("Realm name cannot be null or empty.");
+        }
+
+        if (doesRealmExist(realmName)) {
+            throw new KeycloakSampleException("Realm '" + realmName + "' already exists.");
+        }
+
+
             RealmRepresentation realmRepresentation = new RealmRepresentation();
-            realmRepresentation.setRealm(KEYCLOAK_REALM);
+            realmRepresentation.setRealm(realmName);
+            realmRepresentation.setEnabled(true);
 
             keycloak.realms().create(realmRepresentation);
-        }
+            log.info("Created Realm: " + realmName);
     }
+
+    protected boolean doesRealmExist(String realmName) {
+        return keycloak.realms().findAll().stream()
+                .anyMatch(realm -> realm.getRealm().equals(realmName));
+    }
+
+
 
     @Override
     public void deleteUser(String keycloakId) {
@@ -346,52 +417,6 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public void addUserToGroup(String userId, String groupName) {
 
-//        try {
-//            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
-//            if (userResource == null) {
-//                throw new RuntimeException("User not found: " + userId);
-//            }
-//
-//            GroupRepresentation group = findGroupByName(groupName);
-//            if (group == null) {
-//                throw new RuntimeException("Group not found: " + groupName);
-//            }
-//
-//            keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("Failed to add user to group", e);
-//        }
-
-//        try {
-//            UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
-//            if (userResource == null) {
-//                throw new RuntimeException("User not found: " + userId);
-//            }
-//
-//            GroupRepresentation group = findGroupByName(groupName);
-//            if (group == null) {
-//                throw new RuntimeException("Group not found: " + groupName);
-//            }
-//
-//            keycloak.realm(KEYCLOAK_REALM).users().get(userId).joinGroup(group.getId());
-//
-//
-//            if (group.getParentId() != null) {
-//                GroupRepresentation parentGroup = keycloak.realm(KEYCLOAK_REALM).groups().group(group.getParentId()).toRepresentation();
-//                log.info("Id__********** " + parentGroup.getId());
-//                List<String> parentRoles = parentGroup.getRealmRoles();
-//                if (parentRoles != null) {
-//                    for (String role : parentRoles) {
-//                        keycloak.realm(KEYCLOAK_REALM).users().get(userId).roles().realmLevel().remove(Collections.singletonList(getRoleByName(role)));
-//
-//                        log.info("Role__ ********** " + role);
-////                        log.info("User_Role__ ********** " + keycloak.realm(KEYCLOAK_REALM).users().get(userId).roles().realmLevel().remove(););
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            throw new RuntimeException("Failed to add user to group", e);
-//        }
 
         try {
             UserResource userResource = keycloak.realm(KEYCLOAK_REALM).users().get(userId);
@@ -539,5 +564,14 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public void createRole(String s) {
 
+    }
+
+    @Override
+    public void deleteRealm(String realmName) {
+        RealmsResource realmsResource = keycloak.realms();
+            if (realmsResource.findAll().stream().noneMatch(r -> r.getRealm().equals(realmName))) {
+                throw new NotFoundException("Realm not found: " + realmName);
+            }
+            realmsResource.realm(realmName).remove();
     }
 }

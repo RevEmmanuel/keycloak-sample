@@ -6,6 +6,7 @@ import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloaks.exceptions.KeycloakSampleException;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
@@ -19,6 +20,8 @@ public interface KeycloakService {
     UserRepresentation createUser(SignUpRequest userRequestDto);
 
     AccessTokenResponse login(LoginRequestDto loginRequestDto);
+
+    void addUserToRealm(String realmName, SignUpRequest userRequestDto);
 
     UserResource getUser(String keycloakId);
 
@@ -57,9 +60,11 @@ public interface KeycloakService {
 
     void createClient(String clientName);
 
-    void createRealm();
+    void createRealm(String realmName) throws KeycloakSampleException;
 
     GroupRepresentation getGroup(String groupId);
 
     void createRole(String s);
+
+    void deleteRealm(String realmName);
 }

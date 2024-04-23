@@ -77,6 +77,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public TokenResponseDto signUp(SignUpRequest requestDto) {
+
         if (userRepository.existsByEmail(requestDto.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
