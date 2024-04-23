@@ -94,7 +94,7 @@ class KeycloakServiceImplTest {
     @Test
     void deleteRealmWithValidRealmName() throws KeycloakSampleException {
         String realmName = "MerchantRealm";
-        keycloakServiceImpl.createRealm(realmName);
+//        keycloakServiceImpl.createRealm(realmName);
 //        RealmRepresentation createdRealm = keycloak.realms().realm(realmName).toRepresentation();
 //        assertNotNull(createdRealm);
 //        assertEquals(realmName, createdRealm.getRealm());
@@ -127,4 +127,5 @@ class KeycloakServiceImplTest {
         assertFalse(users.isEmpty(), "User should be created in the realm");
         assertEquals("Jane", users.get(0).getFirstName());
     }
+
 }

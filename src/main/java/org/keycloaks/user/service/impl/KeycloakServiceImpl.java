@@ -56,6 +56,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     private final ModelMapper modelMapper;
 
+
     String karraboBackofficeRealm = "KarraboBackofficeRealm";
 
     @Override
@@ -120,8 +121,6 @@ public class KeycloakServiceImpl implements KeycloakService {
             Representation.setEmailVerified(true);
             Representation.setFirstName(userRequestDto.getFirstName());
             Representation.setLastName(userRequestDto.getLastName());
-
-
 
             CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
             credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
