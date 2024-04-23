@@ -1,11 +1,11 @@
 package org.keycloaks.user.service;
 
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.AccessTokenResponse;
-import org.keycloak.representations.idm.GroupRepresentation;
-import org.keycloak.representations.idm.RoleRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.*;
+import org.keycloaks.exceptions.KeycloakSampleException;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
@@ -60,4 +60,12 @@ public interface KeycloakService {
     GroupRepresentation getGroup(String groupId);
 
     void createRole(String s);
+
+    void createClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    RealmRepresentation getRealm(String realmName) throws KeycloakSampleException, NotFoundException;
+
+    ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    void deleteClientInRealm(String realmName, String clientName);
 }

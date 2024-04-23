@@ -8,10 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.admin.client.resource.RealmResource;
-import org.keycloak.admin.client.resource.RolesResource;
-import org.keycloak.admin.client.resource.UserResource;
-import org.keycloak.admin.client.resource.UsersResource;
+import org.keycloak.admin.client.resource.*;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.*;
@@ -165,16 +162,6 @@ public class KeycloakServiceImpl implements KeycloakService {
             log.info(e.getMessage());
             throw new RuntimeException();
         }
-    }
-
-    public static RealmRepresentation getRealm(Keycloak keycloak, String realmName, String username, String password) throws KeycloakSampleException, NotFoundException {
-        if (StringUtils.isEmpty(realmName)) {
-            throw new KeycloakSampleException("Realm name cannot be empty");
-        }
-        if (StringUtils.isEmpty(username)) {
-            throw new KeycloakSampleException("Realm name cannot be empty");
-        }
-        return keycloak.realm(realmName).toRepresentation();
     }
 
     @Override
@@ -465,5 +452,76 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public void createRole(String s) {
 
+    }
+
+    @Override
+    public RealmRepresentation getRealm(String realmName) throws KeycloakSampleException, NotFoundException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        return keycloak.realm(realmName).toRepresentation();
+    }
+
+    @Override
+    public ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        RealmResource realmResource = getRealmResource(realmName);
+//        return realmResource.clients().get(clientName).toRepresentation();
+        ClientsResource clientsResource = realmResource.clients();
+        List<ClientRepresentation> resources = clientsResource.findAll();
+        for (ClientRepresentation aClient: resources) {
+            if (aClient.getClientId().equals(clientName)) {
+                return aClient;
+            }
+        }
+        throw new KeycloakSampleException("Client not found");
+    }
+
+    private RealmResource getRealmResource(String realmName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        return keycloak.realm(realmName);
+    }
+
+    private ClientResource getClientResource(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+//        return keycloak.realm(realmName);
+        return null;
+    }
+
+    @Override
+    public void createClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        getRealm(realmName);
+        ClientRepresentation clientRepresentation = new ClientRepresentation();
+        clientRepresentation.setClientId(clientName);
+        clientRepresentation.setDirectAccessGrantsEnabled(Boolean.TRUE);
+        clientRepresentation.setPublicClient(Boolean.TRUE);
+        Response response = keycloak.realm(realmName).clients().create(clientRepresentation);
+        if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
+            throw new KeycloakSampleException("Client with that name exists already");
+        }
+    }
+
+    @Override
+    public void deleteClientInRealm(String realmName, String clientName) {
+        ClientsResource clientsResource = keycloak.realm(realmName).clients();
+//        clientsResource.
     }
 }
