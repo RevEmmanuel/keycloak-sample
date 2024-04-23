@@ -2,7 +2,7 @@ package org.keycloaks.user.service.impl;
 
 
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -16,18 +16,22 @@ import org.keycloaks.user.data.repositories.UserRepository;
 import org.keycloaks.user.service.KeycloakService;
 import org.keycloaks.user.service.UserService;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final KeycloakService keycloakService;
     private final ModelMapper modelMapper;
+
+    @Value("${KEYCLOAK_REALM}")
+    private String KEYCLOAK_REALM;
 
     @Override
     public User getCurrentUser() {
@@ -77,10 +81,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public TokenResponseDto signUp(SignUpRequest requestDto) {
+
         if (userRepository.existsByEmail(requestDto.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-        UserRepresentation userRepresentation = keycloakService.createUser(requestDto);
+        UserRepresentation userRepresentation = keycloakService.createUser(KEYCLOAK_REALM, requestDto);
         userRepository.save(User.builder()
                 .email(userRepresentation.getEmail())
                 .id(userRepresentation.getId())

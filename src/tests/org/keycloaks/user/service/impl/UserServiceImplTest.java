@@ -1,7 +1,6 @@
 package org.keycloaks.user.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
@@ -10,7 +9,6 @@ import org.keycloaks.user.data.models.User;
 import org.keycloaks.user.data.repositories.UserRepository;
 import org.keycloaks.user.service.KeycloakService;
 import org.keycloaks.user.service.UserService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
