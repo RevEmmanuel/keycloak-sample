@@ -74,8 +74,11 @@ public interface KeycloakService {
 
     ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
 
-    void deleteClientInRealm(String realmName, String clientName);
+    void deleteClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
 
     void deleteRealm(String realmName) throws KeycloakSampleException;
 
+    void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException;
+
+    RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException;
 }

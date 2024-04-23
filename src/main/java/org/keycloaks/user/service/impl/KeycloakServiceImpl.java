@@ -602,8 +602,9 @@ public class KeycloakServiceImpl implements KeycloakService {
         if (StringUtils.isEmpty(clientName)) {
             throw new KeycloakSampleException("Realm name cannot be empty");
         }
-//        return keycloak.realm(realmName);
-        return null;
+        String clientId = getClientInRealm(realmName, clientName).getId();
+        return keycloak.realm(realmName).clients().get(clientId);
+//        return null;
     }
 
     @Override
@@ -626,11 +627,50 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void deleteClientInRealm(String realmName, String clientName) {
-        ClientsResource clientsResource = keycloak.realm(realmName).clients();
-//        clientsResource.
+    public void deleteClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        ClientResource clientResource = getClientResource(realmName, clientName);
+        clientResource.remove();
     }
 
+    @Override
+    public void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(roleName)) {
+            throw new KeycloakSampleException("Role name cannot be empty");
+        }
+        RealmResource realmResource = getRealmResource(realmName);
+        RolesResource rolesResource = realmResource.roles();
+        List<RoleRepresentation> existingRoles = rolesResource.list();
+
+        if (existingRoles.stream().noneMatch(role -> role.getName().equals(roleName))) {
+            RoleRepresentation roleRepresentation = new RoleRepresentation();
+            roleRepresentation.setName(roleName);
+            roleRepresentation.setDescription(roleDescription);
+            rolesResource.create(roleRepresentation);
+        }
+        throw new KeycloakSampleException("Role name exists already");
+    }
+
+    public RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realm)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(roleName)) {
+            throw new KeycloakSampleException("Role name cannot be empty");
+        }
+        getRealm(realm);
+        return keycloak.realm(realm).roles().get(roleName).toRepresentation();
+    }
+
+    @Override
     public void deleteRealm(String realmName) throws KeycloakSampleException {
         RealmResource realmResource = getRealmResource(realmName);
         realmResource.toRepresentation();
