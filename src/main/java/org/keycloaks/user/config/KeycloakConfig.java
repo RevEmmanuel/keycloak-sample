@@ -43,6 +43,5 @@ public class KeycloakConfig {
                 .password(keycloakConfigProperties.getPassword())
                 .serverUrl(serverUrl)
                 .build();
-
     }
 }
