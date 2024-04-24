@@ -89,4 +89,6 @@ public interface KeycloakService {
     void deleteRoleInRealm(String realmName, String roleName) throws KeycloakSampleException;
 
     void deleteGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    void deleteTestData() throws KeycloakSampleException;
 }

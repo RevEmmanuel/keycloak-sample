@@ -12,13 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.event.annotation.AfterTestMethod;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Slf4j
 class KeycloakServiceImplTest {
 
@@ -43,23 +41,16 @@ class KeycloakServiceImplTest {
 
     @BeforeEach
     void createDifferentNames() {
+        try {
+            keycloakService.deleteTestData();
+        } catch (KeycloakSampleException e) {
+            log.error("Error: ", e);
+        }
         clientName = "testClient" + System.currentTimeMillis();
         realmName = "testRealm" + System.currentTimeMillis();
         email = String.format("%s@gmail.com", "testUser" + System.currentTimeMillis()).toLowerCase();
         roleName = "testRole " + System.currentTimeMillis();
         groupName = "testGroup " + System.currentTimeMillis();
-    }
-
-    @AfterTestMethod
-    void deleteTestData() {
-        try {
-            keycloakService.deleteRealm(realmName);
-            keycloakService.deleteRoleInRealm(KEYCLOAK_REALM, roleName);
-            keycloakService.deleteGroupInRealm(KEYCLOAK_REALM, groupName);
-            keycloakService.deleteClientInRealm(KEYCLOAK_REALM, clientName);
-        } catch (KeycloakSampleException e) {
-            log.error("Error: ", e);
-        }
     }
 
     @Test
@@ -586,12 +577,6 @@ class KeycloakServiceImplTest {
                 "Group not found");
     }
 
-
-
-
-
-
-    /*
     @Test
     void deleteRealmWithValidRealmName() throws KeycloakSampleException {
         keycloakService.createRealm(realmName);
@@ -599,6 +584,7 @@ class KeycloakServiceImplTest {
         assertThrows(NotFoundException.class, () -> keycloakService.getRealm(realmName));
     }
 
+    /*
     @Test
     void addAUserToRealm() throws KeycloakSampleException {
         SignUpRequest userRequest = new SignUpRequest("Jane", "Doe", email, "password123");
