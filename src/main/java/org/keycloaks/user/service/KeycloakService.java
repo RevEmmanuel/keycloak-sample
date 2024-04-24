@@ -81,4 +81,12 @@ public interface KeycloakService {
     void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException;
 
     RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException;
+
+    void createGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    GroupRepresentation getGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    void deleteRoleInRealm(String realmName, String roleName) throws KeycloakSampleException;
+
+    void deleteGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
 }
