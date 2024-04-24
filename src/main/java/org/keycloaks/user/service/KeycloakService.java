@@ -1,11 +1,10 @@
 package org.keycloaks.user.service;
 
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.AccessTokenResponse;
-import org.keycloak.representations.idm.GroupRepresentation;
-import org.keycloak.representations.idm.RoleRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.*;
 import org.keycloaks.exceptions.KeycloakSampleException;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
@@ -17,11 +16,11 @@ import java.util.List;
 
 public interface KeycloakService {
 
-    UserRepresentation createUser(SignUpRequest userRequestDto);
+    UserRepresentation createUser(String realm, SignUpRequest userRequestDto);
 
     AccessTokenResponse login(LoginRequestDto loginRequestDto);
 
-    void addUserToRealm(String realmName, SignUpRequest userRequestDto);
+//    void addUserToRealm(String realmName, SignUpRequest userRequestDto) throws KeycloakSampleException;
 
     UserResource getUser(String keycloakId);
 
@@ -66,5 +65,17 @@ public interface KeycloakService {
 
     void createRole(String s);
 
-    void deleteRealm(String realmName);
+    void createClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    RealmRepresentation getRealm(String realmName) throws KeycloakSampleException, NotFoundException;
+
+    ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    void deleteClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    void deleteRealm(String realmName) throws KeycloakSampleException;
+
+    void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException;
+
+    RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException;
 }

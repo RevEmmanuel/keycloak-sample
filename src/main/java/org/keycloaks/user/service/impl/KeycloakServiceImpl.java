@@ -26,10 +26,10 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -57,10 +57,16 @@ public class KeycloakServiceImpl implements KeycloakService {
     private final ModelMapper modelMapper;
 
 
-    String karraboBackofficeRealm = "KarraboBackofficeRealm";
-
     @Override
-    public UserRepresentation createUser(SignUpRequest userRequestDto) {
+    public UserRepresentation createUser(String realm, SignUpRequest userRequestDto) {
+        UsersResource usersResource = keycloak.realm(realm).users();
+
+        List<UserRepresentation> existingUsers = usersResource.list();
+        for (UserRepresentation user : existingUsers) {
+            if (user.getEmail().equals(userRequestDto.getEmail().toLowerCase())) {
+                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realm + "'.");
+            }
+        }
 
         UserRepresentation userRepresentation = new UserRepresentation();
         userRepresentation.setEmail(userRequestDto.getEmail());
@@ -78,67 +84,65 @@ public class KeycloakServiceImpl implements KeycloakService {
         userRepresentation.setCredentials(List.of(credentialRepresentation));
 
         try {
-            Response response = keycloak.realm(karraboBackofficeRealm).users().create(userRepresentation);
+            Response response = keycloak.realm(realm).users().create(userRepresentation);
 
             if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
                 throw new RuntimeException("User with the same email or username already exists.");
             }
 
-            List<UserRepresentation> foundUsers = keycloak.realm(karraboBackofficeRealm).users().search(userRequestDto.getEmail());
+            List<UserRepresentation> foundUsers = keycloak.realm(realm).users().search(userRequestDto.getEmail());
             if (foundUsers.isEmpty()) {
                 throw new RuntimeException("User creation failed.");
             }
-            return foundUsers.get(1);
+            return foundUsers.get(0);
 
         } catch (Exception e) {
             throw new RuntimeException("An error occurred while creating the user.", e);
         }
-
-
-
     }
 
-    @Override
-    public void addUserToRealm(String realmName, SignUpRequest userRequestDto) {
-
-        if (!doesRealmExist(realmName)) {
-            throw new IllegalArgumentException("Realm '" + realmName + "' does not exist.");
-        }
-
-        try {
-            RealmResource realmResource = keycloak.realm(realmName);
-            UsersResource usersResource = realmResource.users();
-
-            List<UserRepresentation> existingUsers = usersResource.search(userRequestDto.getEmail());
-            if (!existingUsers.isEmpty()) {
-                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
-            }
-
-            UserRepresentation Representation = new UserRepresentation();
-            Representation.setEmail(userRequestDto.getEmail());
-            Representation.setUsername(userRequestDto.getEmail());
-            Representation.setEnabled(true);
-            Representation.setEmailVerified(true);
-            Representation.setFirstName(userRequestDto.getFirstName());
-            Representation.setLastName(userRequestDto.getLastName());
-
-            CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
-            credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
-            credentialRepresentation.setValue(userRequestDto.getPassword());
-            credentialRepresentation.setTemporary(false);
-
-            Representation.setCredentials(List.of(credentialRepresentation));
-
-            Response response = usersResource.create(Representation);
-
-            if (response.getStatus() == Response.Status.CONFLICT.getStatusCode()) {
-                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error creating user in realm '" + realmName + "'", e);
-        }
-    }
+//    @Override
+//    public void addUserToRealm(String realmName, SignUpRequest userRequestDto) throws KeycloakSampleException {
+//
+//        if (!doesRealmExist(realmName)) {
+//            throw new KeycloakSampleException("Realm '" + realmName + "' does not exist.");
+//        }
+//
+//        UsersResource usersResource = keycloak.realm(realmName).users();
+//
+//        List<UserRepresentation> existingUsers = usersResource.list();
+//        for (UserRepresentation user : existingUsers) {
+//            if (user.getEmail().equals(userRequestDto.getEmail().toLowerCase())) {
+//                throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
+//            }
+//        }
+//
+//        UserRepresentation representation = new UserRepresentation();
+//        representation.setEmail(userRequestDto.getEmail());
+//        representation.setUsername(userRequestDto.getEmail());
+//        representation.setEnabled(true);
+//        representation.setEmailVerified(true);
+//        representation.setFirstName(userRequestDto.getFirstName());
+//        representation.setLastName(userRequestDto.getLastName());
+//
+//
+//        CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+//        credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+//        credentialRepresentation.setValue(userRequestDto.getPassword());
+//        credentialRepresentation.setTemporary(false);
+//
+//        representation.setCredentials(List.of(credentialRepresentation));
+//
+//        Response response = keycloak.realm(realmName).users().create(representation);
+//        if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
+//            throw new IllegalArgumentException("User with the same email/username already exists in realm '" + realmName + "'.");
+//        }
+//
+//        List<UserRepresentation> foundUsers = keycloak.realm(realmName).users().search(userRequestDto.getEmail());
+//        if (foundUsers.isEmpty()) {
+//            throw new RuntimeException("User creation failed.");
+//        }
+//    }
 
 
     @Override
@@ -221,16 +225,6 @@ public class KeycloakServiceImpl implements KeycloakService {
         }
     }
 
-    public static RealmRepresentation getRealm(Keycloak keycloak, String realmName, String username, String password) throws KeycloakSampleException, NotFoundException {
-        if (StringUtils.isEmpty(realmName)) {
-            throw new KeycloakSampleException("Realm name cannot be empty");
-        }
-        if (StringUtils.isEmpty(username)) {
-            throw new KeycloakSampleException("Realm name cannot be empty");
-        }
-        return keycloak.realm(realmName).toRepresentation();
-    }
-
     @Override
     public AccessTokenResponse refreshToken(String refreshToken) {
         try {
@@ -293,28 +287,32 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     @Override
     public void createRealm(String realmName) throws KeycloakSampleException {
-        if (realmName == null || realmName.trim().isEmpty()) {
+        if (StringUtils.isEmpty(realmName)) {
             throw new KeycloakSampleException("Realm name cannot be null or empty.");
         }
-
         if (doesRealmExist(realmName)) {
             throw new KeycloakSampleException("Realm '" + realmName + "' already exists.");
         }
+        RealmRepresentation realmRepresentation = new RealmRepresentation();
+        realmRepresentation.setRealm(realmName);
+        realmRepresentation.setEnabled(true);
 
-
-            RealmRepresentation realmRepresentation = new RealmRepresentation();
-            realmRepresentation.setRealm(realmName);
-            realmRepresentation.setEnabled(true);
-
-            keycloak.realms().create(realmRepresentation);
-            log.info("Created Realm: " + realmName);
+        keycloak.realms().create(realmRepresentation);
+        log.info("Created Realm: " + realmName);
     }
 
-    protected boolean doesRealmExist(String realmName) {
-        return keycloak.realms().findAll().stream()
-                .anyMatch(realm -> realm.getRealm().equals(realmName));
+    protected boolean doesRealmExist(String realmName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        try {
+            RealmResource realmResource = getRealmResource(realmName);
+            realmResource.toRepresentation();
+            return true;
+        } catch (NotFoundException exception) {
+            return false;
+        }
     }
-
 
 
     @Override
@@ -445,7 +443,6 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
 
-
     private GroupRepresentation findGroupByName(String groupName) {
         try {
             List<GroupRepresentation> allGroups = getAllGroups();
@@ -566,11 +563,134 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
-    public void deleteRealm(String realmName) {
-        RealmsResource realmsResource = keycloak.realms();
-            if (realmsResource.findAll().stream().noneMatch(r -> r.getRealm().equals(realmName))) {
-                throw new NotFoundException("Realm not found: " + realmName);
+    public RealmRepresentation getRealm(String realmName) throws KeycloakSampleException, NotFoundException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        return keycloak.realm(realmName).toRepresentation();
+    }
+
+    @Override
+    public ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Client name cannot be empty");
+        }
+        RealmResource realmResource = getRealmResource(realmName);
+//        return realmResource.clients().get(clientName).toRepresentation();
+        ClientsResource clientsResource = realmResource.clients();
+        List<ClientRepresentation> resources = clientsResource.findAll();
+        for (ClientRepresentation foundClient : resources) {
+            if (foundClient.getClientId().equals(clientName)) {
+                return foundClient;
             }
-            realmsResource.realm(realmName).remove();
+        }
+        throw new KeycloakSampleException("Client not found");
+    }
+
+    private RealmResource getRealmResource(String realmName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        return keycloak.realm(realmName);
+    }
+
+    private ClientResource getClientResource(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        String clientId = getClientInRealm(realmName, clientName).getId();
+        return keycloak.realm(realmName).clients().get(clientId);
+//        return null;
+    }
+
+    @Override
+    public void createClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        getRealm(realmName);
+        ClientRepresentation clientRepresentation = new ClientRepresentation();
+        clientRepresentation.setClientId(clientName);
+        clientRepresentation.setDirectAccessGrantsEnabled(Boolean.TRUE);
+        clientRepresentation.setPublicClient(Boolean.TRUE);
+        Response response = keycloak.realm(realmName).clients().create(clientRepresentation);
+        if (response.getStatusInfo().equals(Response.Status.CONFLICT)) {
+            throw new KeycloakSampleException("Client with that name exists already");
+        }
+    }
+
+    @Override
+    public void deleteClientInRealm(String realmName, String clientName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(clientName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        ClientResource clientResource = getClientResource(realmName, clientName);
+        clientResource.remove();
+    }
+
+    @Override
+    public void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realmName)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(roleName)) {
+            throw new KeycloakSampleException("Role name cannot be empty");
+        }
+        RealmResource realmResource = getRealmResource(realmName);
+        RolesResource rolesResource = realmResource.roles();
+        List<RoleRepresentation> existingRoles = rolesResource.list();
+
+        if (existingRoles.stream().noneMatch(role -> role.getName().equals(roleName))) {
+            RoleRepresentation roleRepresentation = new RoleRepresentation();
+            roleRepresentation.setName(roleName);
+            roleRepresentation.setDescription(roleDescription);
+            rolesResource.create(roleRepresentation);
+        }
+        throw new KeycloakSampleException("Role name exists already");
+    }
+
+    public RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException {
+        if (StringUtils.isEmpty(realm)) {
+            throw new KeycloakSampleException("Realm name cannot be empty");
+        }
+        if (StringUtils.isEmpty(roleName)) {
+            throw new KeycloakSampleException("Role name cannot be empty");
+        }
+        getRealm(realm);
+        return keycloak.realm(realm).roles().get(roleName).toRepresentation();
+    }
+
+    @Override
+    public void deleteRealm(String realmName) throws KeycloakSampleException {
+
+        try {
+            RealmResource realmResource = getRealmResource(realmName);
+            realmResource.remove();
+        } catch (NotFoundException ex) {
+            throw new KeycloakSampleException("Realm not found: " + realmName);
+        } catch (Exception message) {
+            throw new KeycloakSampleException("Error occurred while deleting realm: " + message.getMessage());
+        }
+
+//        RealmResource realmResource = getRealmResource(realmName);
+//        realmResource.toRepresentation();
+//        realmResource.remove();
+//        RealmsResource realmsResource = keycloak.realms();
+//        if (realmsResource.findAll().stream().noneMatch(r -> r.getRealm().equals(realmName))) {
+//            throw new NotFoundException("Realm not found: " + realmName);
+//        }
+//        realmsResource.realm(realmName).remove();
     }
 }
