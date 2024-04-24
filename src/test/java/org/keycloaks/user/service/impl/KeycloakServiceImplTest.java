@@ -2,23 +2,17 @@ package org.keycloaks.user.service.impl;
 
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.keycloak.admin.client.Keycloak;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.*;
 import org.keycloaks.exceptions.KeycloakSampleException;
-import org.keycloaks.user.service.KeycloakService;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
+import org.keycloaks.user.service.KeycloakService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.event.annotation.AfterTestMethod;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 
@@ -30,9 +24,6 @@ class KeycloakServiceImplTest {
 
     @Autowired
     private KeycloakService keycloakService;
-
-    @Autowired
-    private Keycloak keycloak;
 
     @Value("${KEYCLOAK_REALM}")
     private String KEYCLOAK_REALM;
@@ -52,24 +43,16 @@ class KeycloakServiceImplTest {
 
     @BeforeEach
     void createDifferentNames() {
+//        try {
+//            keycloakService.deleteTestData();
+//        } catch (KeycloakSampleException e) {
+//            log.error("Error: ", e);
+//        }
         clientName = "testClient" + System.currentTimeMillis();
         realmName = "testRealm" + System.currentTimeMillis();
         email = String.format("%s@gmail.com", "testUser" + System.currentTimeMillis()).toLowerCase();
         roleName = "testRole " + System.currentTimeMillis();
         groupName = "testGroup " + System.currentTimeMillis();
-    }
-
-    @AfterEach
-    void deleteTestData() {
-        try {
-            keycloakService.deleteTestData();
-            keycloakService.deleteRealm(realmName);
-            keycloakService.deleteRoleInRealm(KEYCLOAK_REALM, roleName);
-            keycloakService.deleteGroupInRealm(KEYCLOAK_REALM, groupName);
-            keycloakService.deleteClientInRealm(KEYCLOAK_REALM, clientName);
-        } catch (KeycloakSampleException e) {
-            log.error("Error: ", e);
-        }
     }
 
     @Test
@@ -213,6 +196,7 @@ class KeycloakServiceImplTest {
     }
 
 
+    @Test
     void cannotDeleteClientInRealmThatDoesNotExist() {
         assertThrows(KeycloakSampleException.class,
                 () -> keycloakService.deleteClientInRealm("invalidRealm", clientName),
@@ -583,119 +567,41 @@ class KeycloakServiceImplTest {
                 () -> keycloakService.getGroupInRealm(EXTRA_REALM, groupName),
                 "Group not found");
     }
-}
 
-
-
-
-
-
-    /*
 
     @Test
     void deleteRealmWithValidRealmName() throws KeycloakSampleException {
+        keycloakService.createRealm(realmName);
+        RealmRepresentation realmRepresentation = keycloakService.getRealm(realmName);
+        assertNotNull(realmRepresentation);
+        assertEquals(realmName, realmRepresentation.getRealm());
+        keycloakService.deleteRealm(realmName);
+//        keycloak.realm(realmName).remove();
+        assertThrows(NotFoundException.class,
+                () -> keycloakService.getRealm(realmName),
+                "Realm not found: " + realmName);
+    }
 
-        String name ="testRealm1713927157062";
-//        keycloakService.createRealm(realmName);
-//        RealmRepresentation createdRealm = keycloak.realms().realm(realmName).toRepresentation();
-//        assertNotNull(createdRealm);
-//        assertEquals(realmName, createdRealm.getRealm());
-        keycloakService.deleteRealm(name);
-        assertThrows(NotFoundException.class, () -> keycloakService.getRealm( realmName));
 
+    @Test
+    void createUserWithValidDetails() {
+        SignUpRequest userRequest = new SignUpRequest("Joel", "Mack", email, "password123");
+        UserRepresentation createdUser = keycloakService.createUser(KEYCLOAK_REALM, userRequest);
+        assertNotNull(createdUser);
+        assertEquals(email, createdUser.getEmail());
+        assertEquals("Joel", createdUser.getFirstName());
+        assertEquals("Mack", createdUser.getLastName());
     }
 
     @Test
-    void createRealmWhenRealmAlreadyExist () throws KeycloakSampleException {
-            keycloakService.createRealm(realmName);
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.createRealm(realmName));
+    void cannotCreateRoleWithSameNameInRealm() {
+        try {
+            keycloakService.createRoleInRealm(KEYCLOAK_REALM, roleName, "any description");
+        } catch (KeycloakSampleException exception) {
+            log.error("Error occurred", exception);
         }
-
-        @Test
-        void createUserWithValidDetails() {
-            SignUpRequest userRequest = new SignUpRequest("Joel", "Mack", email, "password123");
-            UserRepresentation createdUser = keycloakService.createUser(KEYCLOAK_REALM, userRequest);
-            assertNotNull(createdUser);
-            assertEquals(email, createdUser.getEmail());
-            assertEquals("Joel", createdUser.getFirstName());
-            assertEquals("Mack", createdUser.getLastName());
-        }
-
-        @Test
-        void cannotCreateRoleWithNullRealmName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.createRoleInRealm(null, null, null));
-        }
-
-
-        @Test
-        void cannotCreateRoleWithEmptyRealmName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.createRoleInRealm("", null, null));
-        }
-
-        @Test
-        void cannotCreateRoleWithNullRoleName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.createRoleInRealm("realm", null, null));
-        }
-
-
-        @Test
-        void cannotCreateRoleWithEmptyRoleName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.createRoleInRealm("realm", "", "any description"));
-        }
-
-        @Test
-        void cannotGetRoleWithNullRealmName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.getRoleInRealm(null, null));
-        }
-
-
-        @Test
-        void cannotGetRoleWithEmptyRealmName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.getRoleInRealm("", null));
-        }
-
-        @Test
-        void cannotGetRoleWithNullRoleName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.getRoleInRealm("realm", null));
-        }
-
-
-        @Test
-        void cannotGetRoleWithEmptyRoleName () {
-            assertThrows(KeycloakSampleException.class, () -> keycloakService.getRoleInRealm("realm", ""));
-        }
-
-        @Test
-        void cannotGetRoleWithInvalidRoleName () {
-            assertThrows(NotFoundException.class, () -> keycloakService.getRoleInRealm("realm", "invalidRole"));
-        }
-
-        @Test
-        void createRoleInRealm () {
-            try {
-                keycloakService.createRoleInRealm(realmName, roleName, "any description");
-                RoleRepresentation foundRole = keycloakService.getRoleInRealm(realmName, roleName);
-                assertNotNull(foundRole);
-                assertEquals(roleName, foundRole.getName());
-                assertEquals("any description", foundRole.getDescription());
-            } catch (KeycloakSampleException e) {
-                log.error("Error occurred", e);
-            }
-        }
-
-        @Test
-        void cannotCreateRoleWithSameNameInRealm () {
-            try {
-                keycloakService.createRoleInRealm(realmName, roleName, "any description");
-            } catch (KeycloakSampleException exception) {
-                log.error("Error occurred", exception);
-            }
-            assertThrows(KeycloakSampleException.class,
-                    () -> keycloakService.createRoleInRealm(realmName, roleName, "any description"),
-                    "Role name exists already");
+        assertThrows(KeycloakSampleException.class,
+                () -> keycloakService.createRoleInRealm(KEYCLOAK_REALM, roleName, "any description"),
+                "Role name exists already");
     }
 }
-    /*
-
-     */
-

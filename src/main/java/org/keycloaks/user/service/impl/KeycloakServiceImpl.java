@@ -26,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -770,72 +771,75 @@ public class KeycloakServiceImpl implements KeycloakService {
 
     @Override
     public void deleteRealm(String realmName) throws KeycloakSampleException {
-
-        try {
+        if (doesRealmExist(realmName)) {
             RealmResource realmResource = getRealmResource(realmName);
             realmResource.remove();
-        } catch (NotFoundException ex) {
+        } else {
             throw new KeycloakSampleException("Realm not found: " + realmName);
-        } catch (Exception message) {
-            throw new KeycloakSampleException("Error occurred while deleting realm: " + message.getMessage());
         }
-
-//        RealmResource realmResource = getRealmResource(realmName);
-//        realmResource.toRepresentation();
-//        realmResource.remove();
-//        RealmsResource realmsResource = keycloak.realms();
-//        if (realmsResource.findAll().stream().noneMatch(r -> r.getRealm().equals(realmName))) {
-//            throw new NotFoundException("Realm not found: " + realmName);
-//        }
-//        realmsResource.realm(realmName).remove();
     }
 
     @Override
     public void deleteTestData() throws KeycloakSampleException {
-        List<RealmRepresentation> realmRepresentations = keycloak.realms().findAll();
-        for (RealmRepresentation realmRepresentation: realmRepresentations) {
-            if (realmRepresentation.getRealm().startsWith("test")) {
-                getRealmResource(realmRepresentation.getRealm()).remove();
-            }
+        List<RealmRepresentation> realmRepresentationList = keycloak.realms().findAll();
+        if (realmRepresentationList != null && !realmRepresentationList.isEmpty()) {
+            realmRepresentationList.forEach(realmRepresentation -> {
+                if (realmRepresentation.getRealm().startsWith("test")) {
+                    try {
+                        getRealmResource(realmRepresentation.getRealm()).remove();
+                    } catch (KeycloakSampleException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
         }
 
         List<GroupRepresentation> groupRepresentationList = keycloak.realm(KEYCLOAK_REALM).groups().groups();
-        if (groupRepresentationList != null) {
-            if (!groupRepresentationList.isEmpty()) {
-                groupRepresentationList.stream().forEach(data -> {
-                    try {
-                        if (data.getName().startsWith("test")) {
-                            deleteGroupInRealm(KEYCLOAK_REALM, data.getName());
-                        }
-                    } catch (KeycloakSampleException e) {
-                        e.printStackTrace();
+        if (groupRepresentationList != null && !groupRepresentationList.isEmpty()) {
+            groupRepresentationList.forEach(groupRepresentation -> {
+                try {
+                    if (groupRepresentation.getName().startsWith("test")) {
+                        deleteGroupInRealm(KEYCLOAK_REALM, groupRepresentation.getName());
                     }
-                });
-            } else {
-                System.out.println("Empty 1");
-            }
+                } catch (KeycloakSampleException e) {
+                    log.error("Error: ", e);
+                }
+            });
         } else {
-            System.out.println("Empty 1.1");
+            System.out.println("Unable to get resource for group");
         }
 
 
         List<ClientRepresentation> clientRepresentationList = keycloak.realm(KEYCLOAK_REALM).clients().findAll();
-        if (clientRepresentationList != null) {
-            if (!clientRepresentationList.isEmpty()) {
-                clientRepresentationList.stream().forEach(data -> {
-                    try {
-                        if (data.getClientId().startsWith("test")){
-                            deleteClientInRealm(KEYCLOAK_REALM, data.getClientId());
-                        }
-                    } catch (KeycloakSampleException e) {
-                        e.printStackTrace();
+        if (clientRepresentationList != null && !clientRepresentationList.isEmpty()) {
+            clientRepresentationList.forEach(clientRepresentation -> {
+                try {
+                    if (clientRepresentation.getClientId().startsWith("test")) {
+                        deleteClientInRealm(KEYCLOAK_REALM, clientRepresentation.getClientId());
                     }
-                });
-            } else {
-                System.out.println("empty 2");
-            }
+                } catch (KeycloakSampleException e) {
+                    log.error("Error: ", e);
+                }
+            });
         } else {
-            System.out.println("Empty 2.1");
+            System.out.println("Unable to get resource for client");
+        }
+
+        List<RoleRepresentation> roleRepresentationList = keycloak.realm(KEYCLOAK_REALM).roles().list();
+        if (roleRepresentationList != null && !roleRepresentationList.isEmpty()) {
+            roleRepresentationList.forEach(roleRepresentation -> {
+                try {
+                    if (roleRepresentation.getName().startsWith("test")) {
+                        deleteRoleInRealm(KEYCLOAK_REALM, roleRepresentation.getName());
+                    }
+                } catch (KeycloakSampleException e) {
+                    log.error("Error: ", e);
+                }
+            });
+        } else {
+            System.out.println("Unable to get resource for role");
         }
     }
+
+
 }
