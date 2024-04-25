@@ -43,11 +43,11 @@ class KeycloakServiceImplTest {
 
     @BeforeEach
     void createDifferentNames() {
-//        try {
-//            keycloakService.deleteTestData();
-//        } catch (KeycloakSampleException e) {
-//            log.error("Error: ", e);
-//        }
+        try {
+            keycloakService.deleteTestData();
+        } catch (KeycloakSampleException e) {
+            log.error("Error: ", e);
+        }
         clientName = "testClient" + System.currentTimeMillis();
         realmName = "testRealm" + System.currentTimeMillis();
         email = String.format("%s@gmail.com", "testUser" + System.currentTimeMillis()).toLowerCase();
