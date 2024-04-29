@@ -211,7 +211,7 @@ public class KeycloakServiceImpl implements KeycloakService {
                     .grantType(OAuth2Constants.PASSWORD)
                     .realm(KEYCLOAK_REALM)
                     .clientId(KEYCLOAK_CLIENT_ID)
-//                    .clientSecret(KEYCLOAK_CLIENT_SECRET)
+                    .clientSecret(KEYCLOAK_CLIENT_SECRET)
                     .username(loginRequestDto.getEmail())
                     .password(loginRequestDto.getPassword())
                     .serverUrl(KEYCLOAK_SERVER_URL)

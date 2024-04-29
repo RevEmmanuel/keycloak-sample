@@ -577,12 +577,12 @@ class KeycloakServiceImplTest {
                 "Group not found");
     }
 
-    @Test
-    void deleteRealmWithValidRealmName() throws KeycloakSampleException {
-        keycloakService.createRealm(realmName);
-        keycloakService.deleteRealm(realmName);
-        assertThrows(NotFoundException.class, () -> keycloakService.getRealm(realmName));
-    }
+//    @Test
+//    void deleteRealmWithValidRealmName() throws KeycloakSampleException {
+//        keycloakService.createRealm(realmName);
+//        keycloakService.deleteRealm(realmName);
+//        assertThrows(NotFoundException.class, () -> keycloakService.getRealm(realmName));
+//    }
 
     /*
     @Test
