@@ -15,7 +15,6 @@ public class ProjectUtilities {
     public static final String MEMBER_EXTENSION = "_MEMBER";
     public static final String OWNER_EXTENSION = "_OWNER";
     public static final String GROUP_EXTENSION = "_GROUP";
-    public static final String KEYCLOAK_SERVER_URL = "http://localhost:8080";
 
 
 

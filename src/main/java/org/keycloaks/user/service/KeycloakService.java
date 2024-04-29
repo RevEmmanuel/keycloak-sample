@@ -1,11 +1,14 @@
 package org.keycloaks.user.service;
 
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.idm.*;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloaks.exceptions.KeycloakSampleException;
 import org.keycloaks.user.data.dtos.requests.CreateSubGroupRequest;
 import org.keycloaks.user.data.dtos.requests.LoginRequestDto;
 import org.keycloaks.user.data.dtos.requests.SignUpRequest;
@@ -16,9 +19,11 @@ import java.util.List;
 
 public interface KeycloakService {
 
-    UserRepresentation createUser(SignUpRequest userRequestDto);
+    UserRepresentation createUser(String realm, SignUpRequest userRequestDto);
 
     AccessTokenResponse login(LoginRequestDto loginRequestDto);
+
+    void addUserToRealm(String realmName, SignUpRequest userRequestDto) throws KeycloakSampleException;
 
     UserResource getUser(String keycloakId);
 
@@ -48,6 +53,8 @@ public interface KeycloakService {
 
     UserRepresentation getUserDetails(String userId);
 
+    void removeRoleFromUser(String userId, String roleName);
+
     void createPassword(String keycloakId, String password);
 
     AccessTokenResponse refreshToken(String refreshToken);
@@ -55,9 +62,33 @@ public interface KeycloakService {
 
     void createClient(String clientName);
 
-    void createRealm();
+    void createRealm(String realmName) throws KeycloakSampleException;
 
     GroupRepresentation getGroup(String groupId);
 
     void createRole(String s);
+
+    void createClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    RealmRepresentation getRealm(String realmName) throws KeycloakSampleException, NotFoundException;
+
+    ClientRepresentation getClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    void deleteClientInRealm(String realmName, String clientName) throws KeycloakSampleException;
+
+    void deleteRealm(String realmName) throws KeycloakSampleException;
+
+    void createRoleInRealm(String realmName, String roleName, String roleDescription) throws KeycloakSampleException;
+
+    RoleRepresentation getRoleInRealm(String realm, String roleName) throws KeycloakSampleException;
+
+    void createGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    GroupRepresentation getGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    void deleteRoleInRealm(String realmName, String roleName) throws KeycloakSampleException;
+
+    void deleteGroupInRealm(String realmName, String groupName) throws KeycloakSampleException;
+
+    void deleteTestData() throws KeycloakSampleException;
 }
